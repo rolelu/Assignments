@@ -18,13 +18,13 @@ cmap = colormaps['plasma']
 colors = cmap(ind_colors)
 
 "========= LOAD INPUTS AND OTHER PARAMETERS ========="
-phi_ca_0 = 1.2      # Initial cathode voltage, relative to anode (V)
+phi_ca_0 = 1.1      # Initial cathode voltage, relative to anode (V)
 phi_elyte_0 = 0.6   # Initial electrolyte voltage at equilibrium, relative to anode (V)
 nvars = 3           # Number of variables in solution vector SV.  Set this manually,
                     #for now
 
 class params:
-    i_ext = 0.5     # External current (A/m2)
+    i_ext = 0     # External current (A/m2)
     T = 973         # Temperature (K)
 
 # Positions in solution vector
@@ -59,6 +59,11 @@ U_ca = 0.6
 i0_ca = 1e-2
 C_dl_ca = 1e-4
 
+i_io = params.i_ext
+R_elyte = 1
+t_elyte = 1
+
+delta_phi_elyte = i_io * R_elyte * t_elyte
 
 "========= DEFINE RESIDUAL FUNCTION ========="
 def derivative(_, SV, params, ptr):
@@ -83,9 +88,12 @@ def derivative(_, SV, params, ptr):
     eta_an = phi_dl_an - U_an
     eta_ca = phi_dl_ca - U_ca
 
+
     # faradaic current
     i_far_an = i0_an * (np.exp(-beta * n_elec * F * eta_an / (R * T)) - np.exp((1 - beta) * n_elec * F * eta_an / (R * T)))
     i_far_ca = i0_ca * (np.exp(-beta * n_elec * F * eta_ca / (R * T)) - np.exp((1 - beta) * n_elec * F * eta_ca / (R * T)))
+
+
 
     # double layer current
     i_dl_an = i_ext - i_far_an
@@ -96,9 +104,9 @@ def derivative(_, SV, params, ptr):
     d_delta_phi_dl_ca_dt = - i_dl_ca / C_dl_ca
 
     # electrode and electrolyte potentials
-    dSV_dt[ptr.phi_elyte_an] = phi_an - d_delta_phi_dl_an_dt
-    dSV_dt[ptr.phi_elyte_ca] = d_delta_phi_dl_an_dt
-    dSV_dt[ptr.phi_ca] = d_delta_phi_dl_ca_dt - d_delta_phi_dl_an_dt
+    dSV_dt[ptr.phi_elyte_an] = - d_delta_phi_dl_an_dt
+    dSV_dt[ptr.phi_elyte_ca] = dSV_dt[ptr.phi_elyte_an]
+    dSV_dt[ptr.phi_ca] = d_delta_phi_dl_ca_dt + dSV_dt[ptr.phi_elyte_ca]
 
     return dSV_dt
 
@@ -141,6 +149,7 @@ ax.legend(prop=font, frameon=False)
 fig.tight_layout()
 
 # Uncomment to save the figure, if you want. Name it however you please:
-plt.savefig('HW2_results_ext_current.png', dpi=400)
+plt.savefig('HW2_results_new_zero_current.png', dpi=400)
 # Show figure:
 plt.show()
+
